@@ -1,0 +1,195 @@
+---
+output:
+  word_document: default
+  html_document: default
+---
+
+##Offspring Coinvasion 
+```{r}
+Offspring <- read.csv("coinvasionchisquared.csv")
+
+#Add row with added PronF and PronM
+Offspring <- rbind(Offspring, list(22,19,31))
+#Rename rows
+rownames(Offspring) = c("AdultF", "DeutF", "PronF", "AdultM","DeutM", "PronM", "Pron")
+#Delete rows with PronF and PronM
+Offspring <- Offspring[-c(3, 6), ]
+
+Chisq <- chisq.test(Offspring)
+Chisq
+
+#calculate the contribution from each group to the p-value
+contrib <- 100*Chisq$residuals^2/Chisq$statistic
+
+#Plot contributions. In this case red is a positive contribution and yellow is negative
+require(corrplot)
+corrplot(contrib, is.cor = FALSE)
+
+Offspring<- as.matrix(Offspring)
+corrplot(Offspring, is.cor = FALSE)
+
+```
+
+##Offspring only total Coinvasion 
+```{r}
+Offspring <- read.csv("coinvasionsoffper.csv")
+
+rownames(Offspring) = c("OnetoOne", "TwotoOne", "FourtoOne")
+
+Chisq <- chisq.test(Offspring)
+Chisq
+
+#calculate the contribution from each group to the p-value
+contrib <- 100*Chisq$residuals^2/Chisq$statistic
+contrib
+
+#Cannot graph, but the numbers are in the global environment to the right and under "Values"
+```
+
+
+
+
+
+
+
+
+
+
+
+##Offspring Larvae stage 
+```{r}
+Offspring <- read.csv("larvaestagechisquared.csv")
+
+Offspring <- rbind(Offspring, list(19,38))
+rownames(Offspring) = c("AdultF", "DeutF", "PronF", "AdultM","DeutM", "PronM", "Pron")
+Offspring <- Offspring[-c(3, 6), ]
+
+Chisq <- chisq.test(Offspring)
+
+Chisq
+
+#calculate the contribution from each group to the p-value
+contrib <- 100*Chisq$residuals^2/Chisq$statistic
+
+#Plot contributions. In this case red is a positive contribution and yellow is negative
+require(corrplot)
+corrplot(contrib, is.cor = FALSE)
+
+```
+
+##Offspring only total larvae stage  
+```{r}
+Offspring <- read.csv("larvalstageoffper.csv")
+
+rownames(Offspring) = c("capped", "uncapped")
+
+Chisq <- chisq.test(Offspring)
+Chisq
+
+#calculate the contribution from each group to the p-value
+contrib <- 100*Chisq$residuals^2/Chisq$statistic
+contrib
+
+#Cannot graph, but the numbers are in the global environment to the right and under "Values"
+```
+
+
+
+
+
+
+
+
+
+
+##Offspring larval source  
+```{r}
+Offspring <- read.csv("larvaesourcechisquared.csv")
+
+Offspring <- rbind(Offspring, list(13,29,1,35,29))
+rownames(Offspring) = c("AdultF", "DeutF", "PronF", "AdultM","DeutM", "PronM", "Pron")
+Offspring <- Offspring[-c(3, 6), ]
+
+Chisq <- chisq.test(Offspring)
+Chisq
+
+#calculate the contribution from each group to the p-value
+contrib <- 100*Chisq$residuals^2/Chisq$statistic
+
+#Plot contributions. In this case red is a positive contribution and yellow is negative
+require(corrplot)
+corrplot(contrib, is.cor = FALSE)
+
+```
+
+##Offspring only total larval source  
+```{r}
+Offspring <- read.csv("larvaesourceoffper.csv")
+
+rownames(Offspring) = c("one", "two", "three", "four", "five")
+
+Chisq <- chisq.test(Offspring)
+Chisq
+
+#calculate the contribution from each group to the p-value
+contrib <- 100*Chisq$residuals^2/Chisq$statistic
+contrib
+
+#Cannot graph, but the numbers are in the global environment to the right and under "Values"
+```
+
+
+
+
+
+
+
+
+
+
+##Offspring temp  
+```{r}
+Offspring <- read.csv("temperaturechisquared.csv")
+
+Offspring <- rbind(Offspring, list(17,13,11,4))
+rownames(Offspring) = c("AdultF", "DeutF", "PronF", "AdultM","DeutM", "PronM", "Pron")
+Offspring <- Offspring[-c(3, 6), ]
+
+Chisq <- chisq.test(Offspring)
+Chisq
+
+#calculate the contribution from each group to the p-value
+contrib <- 100*Chisq$residuals^2/Chisq$statistic
+
+#Plot contributions. In this case red is a positive contribution and yellow is negative
+require(corrplot)
+corrplot(contrib, is.cor = FALSE)
+
+```
+
+##Offspring only total temp  
+```{r}
+Offspring <- read.csv("temperatureoffper.csv")
+
+rownames(Offspring) = c("thirtypointfive", "thirtytwopointfive", "thirtyfourpointfive", "thirtysixpointfive")
+
+Chisq <- chisq.test(Offspring)
+Chisq
+
+#calculate the contribution from each group to the p-value
+contrib <- 100*Chisq$residuals^2/Chisq$statistic
+contrib
+
+#Cannot graph, but the numbers are in the global environment to the right and under "Values"
+```
+
+
+
+
+
+
+
+
+
+
+

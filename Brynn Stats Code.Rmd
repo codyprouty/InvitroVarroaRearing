@@ -1,0 +1,386 @@
+---
+title: "Brynn"
+output:
+  word_document: default
+  html_document: default
+---
+##A. CoInvasion
+
+#1.Data Manipulation
+```{r}
+InVitro <- read.csv("RatioStudy.csv")
+names(InVitro)[1] <- "Ratio"
+library(multcomp)
+library(lsmeans)
+
+```
+```{r}
+## Summarizes data.
+## Gives count, mean, standard deviation, standard error of the mean, and confidence interval (default 95%).
+##   data: a data frame.
+##   measurevar: the name of a column that contains the variable to be summariezed
+##   groupvars: a vector containing names of columns that contain grouping variables
+##   na.rm: a boolean that indicates whether to ignore NA's
+##   conf.interval: the percent range of the confidence interval (default is 95%)
+summarySE <- function(data=NULL, measurevar, groupvars=NULL, na.rm=FALSE,
+                      conf.interval=.95, .drop=TRUE) {
+    library(plyr)
+
+    # New version of length which can handle NA's: if na.rm==T, don't count them
+    length2 <- function (x, na.rm=FALSE) {
+        if (na.rm) sum(!is.na(x))
+        else       length(x)
+    }
+
+    # This does the summary. For each group's data frame, return a vector with
+    # N, mean, and sd
+    datac <- ddply(data, groupvars, .drop=.drop,
+      .fun = function(xx, col) {
+        c(N    = length2(xx[[col]], na.rm=na.rm),
+          mean = mean   (xx[[col]], na.rm=na.rm),
+          sd   = sd     (xx[[col]], na.rm=na.rm)
+        )
+      },
+      measurevar
+    )
+
+    # Rename the "mean" column    
+    datac <- rename(datac, c("mean" = measurevar))
+
+    datac$se <- datac$sd / sqrt(datac$N)  # Calculate standard error of the mean
+
+    # Confidence interval multiplier for standard error
+    # Calculate t-statistic for confidence interval: 
+    # e.g., if conf.interval is .95, use .975 (above/below), and use df=N-1
+    ciMult <- qt(conf.interval/2 + .5, datac$N-1)
+    datac$ci <- datac$se * ciMult
+
+    return(datac)
+}
+
+```
+
+#1. Graphs
+##Death Plot
+```{r}
+library(survival)
+InVitro$SurvObj <- with(InVitro, Surv(DeathDay, Survived == 0))
+
+#png("InVitroSurvival.png", width=6, height=6, units="in", res=400)
+Survival <- survfit(SurvObj ~ Ratio, data = InVitro)
+plot(Survival, col=c("#66CCEE", "#EE6677", "#4477AA"), lty=1, lwd = 3,ylim=c(0.6,1), xlim=c(-1.5,10), xlab="Time (days)", ylab="Proportion Survived")
+legend("bottomleft", c("One to One", "One to Two", "One to Four"), col=c("#66CCEE", "#EE6677", "#4477AA"), lty=1, lwd = 3, title="Ratio")
+#dev.off()
+
+```
+##Reproduction Plot 
+```{r}
+Invitro1 <- subset(InVitro, Reproduced > -1)
+Invitro2 <- subset(Invitro1, Survived == 1)
+SummaryRep <- summarySE(Invitro1, measurevar="Reproduced", groupvars="Ratio")
+SummarySurv <- summarySE(InVitro, measurevar="Survived", groupvars="Ratio")
+
+plot(1:3, SummaryRep[,3], xaxt="n", ylim=c(0,1), xlim=c(.8,3.2), type="b", pch=16, col="blue", xlab="Treatment", ylab="Proportion Reproduced", cex=1.5, lty=0, cex.lab=1.5, lwd=2)
+axis(1, 1:3, labels=c("1:1", "2:1", "4:1"))
+arrows(1:3, SummaryRep[,3]-SummaryRep[,"se"], 1:3, SummaryRep[,3]+SummaryRep[, "se"], code=3, angle=90, length=0.05, lwd=2, col="blue")
+```
+
+#2.Significance
+##Survival
+```{r}
+model<-glm(Survived~Ratio,family=binomial(link='logit'),data=InVitro)
+anova(model, test="Chisq")
+summary(model)
+
+
+
+library(survival)
+
+#This is the code for survival analysis, it will not run when all of the ones on the final day survived, so Kaylin's suggestion will work
+#survdiff(Surv(DeathDay, Survived) ~ Ratio, InVitro)
+
+#This is the analysis for death day if all survived from the final day.
+model<-glm(DeathDay~Ratio,family=poisson(link='log'),data=Invitro2)
+anova(model, test="Chisq")
+summary(model)
+
+```
+
+##Reproduction
+```{r}
+Rmodel<-glm(Reproduced~Ratio,family=binomial(link='logit'),data=InVitro)
+anova(Rmodel, test="Chisq")
+summary(Rmodel)
+
+lsm<-lsmeans(Rmodel, list( ~ Ratio))
+cld(lsm)
+```
+
+
+##B. Larvae Stage
+#1.Data Manipulation
+```{r}
+Larvae<- read.csv("LarvaeStage.csv")
+names(Larvae)[1] <- "Stage"
+
+
+```
+
+#1. Graphs
+##Death Plot
+```{r}
+library(survival)
+Larvae$SurvObj <- with(Larvae, Surv(DeathDay, Survived == 0))
+
+#png("InVitroSurvival.png", width=6, height=6, units="in", res=400)
+Survival <- survfit(SurvObj ~ Stage, data = Larvae)
+plot(Survival, col=c("#66CCEE", "#EE6677", "#4477AA"), lty=1, lwd = 3,ylim=c(0.6,1), xlim=c(-1.5,10), xlab="Time (days)", ylab="Proportion Survived")
+legend("bottomleft", c("Capped", "Uncapped"), col=c("#66CCEE", "#EE6677"), lty=1, lwd = 3, title="Stage")
+#dev.off()
+
+```
+##Reproduction Plot 
+```{r}
+SummaryRep1 <- summarySE(Larvae, measurevar="Reproduced", groupvars="Stage")
+
+Larvae1 <- subset(Larvae, Reproduced > -1)
+Larvae2 <- subset(Larvae1, Survived == 1)
+SummaryRep <- summarySE(Larvae1, measurevar="Reproduced", groupvars="Stage")
+SummarySurv <- summarySE(Larvae, measurevar="Survived", groupvars="Stage")
+
+plot(1:2, SummaryRep1[,3], xaxt="n", ylim=c(0,.7), xlim=c(.8,2.2), type="b", pch=16, col="blue", xlab="Treatment", ylab="Proportion Reproduced", cex=1.5, lty=0, cex.lab=1.5, lwd=2)
+axis(1, 1:2, labels=c("Capped", "Uncapped"))
+arrows(1:2, SummaryRep1[,3]-SummaryRep1[,"se"], 1:2, SummaryRep1[,3]+SummaryRep1[, "se"], code=3, angle=90, length=0.05, lwd=2, col="blue")
+```
+#2.Significance
+##Survival
+```{r}
+model<-glm(Survived~Stage,family=binomial(link='logit'),data=Larvae)
+anova(model, test="Chisq")
+summary(model)
+
+
+
+library(survival)
+
+#This is the code for survival analysis, it will not run when all of the ones on the final day survived, so Kaylin's suggestion will work
+#survdiff(Surv(DeathDay, Survived) ~ Ratio, InVitro)
+
+#This is the analysis for death day if all survived from the final day.
+model<-glm(DeathDay~Stage,family=poisson(link='log'),data=Larvae1)
+anova(model, test="Chisq")
+summary(model)
+
+```
+```{r}
+Rmodel<-glm(Reproduced~Stage,family=binomial(link='logit'),data=Larvae2)
+anova(Rmodel, test="Chisq")
+summary(Rmodel)
+
+lsm<-lsmeans(Rmodel, list( ~ Stage))
+cld(lsm)
+```
+
+##B. Larvae Source
+#1.Data Manipulation
+```{r}
+Larva<- read.csv("LarvaeSource.csv")
+names(Larva)[1] <- "Source"
+
+
+```
+
+#1. Graphs
+##Death Plot
+```{r}
+library(survival)
+Larva$SurvObj <- with(Larva, Surv(DeathDay, Survived == 0))
+
+#png("InVitroSurvival.png", width=6, height=6, units="in", res=400)
+Survival <- survfit(SurvObj ~ Source, data = Larva)
+plot(Survival, col=c("#66CCEE", "#EE6677",  "green", "orange", "purple"), lty=1, lwd = 3,ylim=c(0.6,1), xlim=c(-1.5,10), xlab="Time (days)", ylab="Proportion Survived")
+legend("bottomleft", c("One", "Two", "Three", "Four", "Five"), col=c("#66CCEE", "#EE6677", "green","orange", "purple"), lty=1, lwd = 3, title="Source")
+#dev.off()
+
+```
+##Reproduction Plot 
+```{r}
+SummaryRep1 <- summarySE(Larva, measurevar="Reproduced", groupvars="Source")
+
+Larva1 <- subset(Larva, Reproduced > -1)
+Larva2 <- subset(Larva1, Survived == 1)
+SummaryRep <- summarySE(Larva1, measurevar="Reproduced", groupvars="Source")
+SummarySurv <- summarySE(Larva, measurevar="Survived", groupvars="Source")
+
+plot(1:5, SummaryRep1[,3], xaxt="n", ylim=c(0,.5), xlim=c(.8,5), type="b", pch=16, col="blue", xlab="Treatment", ylab="Proportion Reproduced", cex=1.5, lty=0, cex.lab=1.5, lwd=2)
+axis(1, 1:5, labels=c("One", "Two", "Three","Four","Five"))
+arrows(1:5, SummaryRep1[,3]-SummaryRep1[,"se"], 1:5, SummaryRep1[,3]+SummaryRep1[, "se"], code=3, angle=90, length=0.05, lwd=2, col="blue")
+```
+#2.Significance
+##Survival
+```{r}
+model<-glm(Survived~Source,family=binomial(link='logit'),data=Larva)
+anova(model, test="Chisq")
+summary(model)
+
+lsm<-lsmeans(model, list( ~ Source))
+cld(lsm)
+
+library(survival)
+
+#This is the code for survival analysis, it will not run when all of the ones on the final day survived, so Kaylin's suggestion will work
+#survdiff(Surv(DeathDay, Survived) ~ Ratio, InVitro)
+
+#This is the analysis for death day if all survived from the final day.
+model<-glm(DeathDay~Source,family=poisson(link='log'),data=Larva2)
+anova(model, test="Chisq")
+summary(model)
+
+```
+```{r}
+Rmodel<-glm(Reproduced~Source,family=binomial(link='logit'),data=Larva2)
+anova(Rmodel, test="Chisq")
+summary(Rmodel)
+
+lsm<-lsmeans(Rmodel, list( ~ Source))
+cld(lsm)
+```
+
+##B. Mite Stage
+#1.Data Manipulation
+```{r}
+Mite<- read.csv("MStage.csv")
+names(Mite)[1] <- "Stage2"
+
+unique(Mite$Stage2)
+
+```
+
+#1. Graphs
+##Death Plot
+```{r}
+library(survival)
+Mite$SurvObj <- with(Mite, Surv(DeathDay, Survived == 0))
+
+#png("InVitroSurvival.png", width=6, height=6, units="in", res=400)
+Survival <- survfit(SurvObj ~ Stage2, data = Mite)
+plot(Survival, col=c("#66CCEE", "#EE6677",  "green", "orange"), lty=1, lwd = 3,ylim=c(0.6,1), xlim=c(-1.5,10), xlab="Time (days)", ylab="Proportion Survived")
+legend("bottomleft", c("AAC", "LAC", "AC", "LC"), col=c("#66CCEE", "#EE6677", "green","orange"), lty=1, lwd = 3, title="Stage2")
+#dev.off()
+
+```
+##Reproduction Plot 
+```{r}
+SummaryRep1 <- summarySE(Mite, measurevar="Reproduced", groupvars="Stage2")
+
+Mite1 <- subset(Mite, Reproduced > -1)
+Mite2 <- subset(Mite1, Survived==1)
+SummaryRep <- summarySE(Mite1, measurevar="Reproduced", groupvars="Stage2")
+SummarySurv <- summarySE(Mite, measurevar="Survived", groupvars="Stage2")
+
+plot(1:4, SummaryRep1[,3], xaxt="n", ylim=c(0,.5), xlim=c(.8,5), type="b", pch=16, col="blue", xlab="Treatment", ylab="Proportion Reproduced", cex=1.4, lty=0, cex.lab=1.5, lwd=2)
+axis(1, 1:4, labels=c("AAC", "LAC", "AC","LC"))
+arrows(1:4, SummaryRep1[,3]-SummaryRep1[,"se"], 1:4, SummaryRep1[,3]+SummaryRep1[, "se"], code=3, angle=90, length=0.05, lwd=2, col="blue")
+```
+#2.Significance
+##Survival
+```{r}
+model<-glm(Survived~Stage2,family=binomial(link='logit'),data=Mite)
+anova(model, test="Chisq")
+summary(model)
+
+lsm<-lsmeans(model, list( ~ Stage2))
+cld(lsm)
+
+library(survival)
+
+#This is the code for survival analysis, it will not run when all of the ones on the final day survived, so Kaylin's suggestion will work
+#survdiff(Surv(DeathDay, Survived) ~ Ratio, InVitro)
+
+#This is the analysis for death day if all survived from the final day.
+model<-glm(DeathDay~Stage2,family=poisson(link='log'),data=Mite2)
+anova(model, test="Chisq")
+summary(model)
+
+```
+```{r}
+Rmodel<-glm(Reproduced~Stage2,family=binomial(link='logit'),data=Mite2)
+anova(Rmodel, test="Chisq")
+summary(Rmodel)
+
+lsm<-lsmeans(Rmodel, list( ~ Stage2))
+cld(lsm)
+```
+
+##B. Temperature
+#1.Data Manipulation
+```{r}
+Temp<- read.csv("Temperature.csv")
+names(Temp)[1] <- "Stage3"
+
+unique(Temp$Stage3)
+
+```
+
+#1. Graphs
+##Death Plot
+```{r}
+library(survival)
+Temp$SurvObj <- with(Temp, Surv(DeathDay, Survived == 0))
+
+#png("InVitroSurvival.png", width=6, height=6, units="in", res=400)
+Survival <- survfit(SurvObj ~ Stage3, data = Temp)
+plot(Survival, col=c("#66CCEE", "#EE6677",  "green", "orange"), lty=1, lwd = 3,ylim=c(0.6,1), xlim=c(-1.5,10), xlab="Time (days)", ylab="Proportion Survived")
+legend("bottomleft", c("30.5", "32.5", "34.5", "36.5"), col=c("#66CCEE", "#EE6677", "green","orange"), lty=1, lwd = 3, title="Temperatures")
+#dev.off()
+
+```
+##Reproduction Plot 
+```{r}
+SummaryRep1 <- summarySE(Temp, measurevar="Reproduced", groupvars="Stage3")
+
+Temp1 <- subset(Temp, Reproduced > -1)
+SummaryRep <- summarySE(Temp1, measurevar="Reproduced", groupvars="Stage3")
+SummarySurv <- summarySE(Temp, measurevar="Survived", groupvars="Stage3")
+
+Temp2 <- subset(Temp1, Survived == 1)
+SummaryDay <- summarySE(Temp2, measurevar="DeathDay", groupvars="Stage3")
+
+
+plot(1:4, SummaryRep1[,3], xaxt="n", ylim=c(0,.5), xlim=c(.8,5), type="b", pch=16, col="blue", xlab="Treatment", ylab="Proportion Reproduced", cex=1.4, lty=0, cex.lab=1.5, lwd=2)
+axis(1, 1:4, labels=c("30.5", "32.5", "34.5","36.5"))
+arrows(1:4, SummaryRep1[,3]-SummaryRep1[,"se"], 1:4, SummaryRep1[,3]+SummaryRep1[, "se"], code=3, angle=90, length=0.05, lwd=2, col="blue")
+```
+#2.Significance
+##Survival
+```{r}
+model<-glm(Survived~Stage3,family=binomial(link='logit'),data=Temp)
+anova(model, test="Chisq")
+summary(model)
+
+lsm<-lsmeans(model, list( ~ Stage3))
+plot(lsm)
+
+library(survival)
+
+#This is the code for survival analysis, it will not run when all of the ones on the final day survived, so Kaylin's suggestion will work
+#survdiff(Surv(DeathDay, Survived) ~ Ratio, InVitro)
+
+#This is the analysis for death day if all survived from the final day.
+model<-glm(DeathDay~Stage3,family=poisson(link='log'),data=Temp2)
+anova(model, test="Chisq")
+summary(model)
+
+lsm<-lsmeans(model, list( ~ Stage3))
+plot(lsm)
+
+```
+
+```{r}
+Rmodel<-glm(Reproduced~Stage3,family=binomial(link='logit'),data=Temp2)
+anova(Rmodel, test="Chisq")
+summary(Rmodel)
+
+lsm<-lsmeans(Rmodel, list( ~ Stage3))
+plot(lsm)
+```
